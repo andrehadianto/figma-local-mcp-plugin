@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <rect width="128" height="128" rx="28" fill="#1E1E1E"/>
+
+  <!-- suspenders -->
+  <path d="M50 55V82M57 64V82M64 67V82M71 64V82M78 55V82" fill="none" stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- main + side cables -->
+  <path d="M41 34Q64 100 87 34M14 82Q30 70 41 34M114 82Q98 70 87 34" fill="none" stroke="#1ABCFE" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- deck -->
+  <path d="M14 82H114" fill="none" stroke="#0ACF83" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- towers -->
+  <rect x="36" y="24" width="10" height="78" rx="5" fill="#A259FF"/>
+  <rect x="82" y="24" width="10" height="78" rx="5" fill="#F24E1E"/>
+
+  <!-- selection handles on deck ends (design-tool nod) -->
+  <rect x="10" y="78" width="8" height="8" fill="#FFFFFF" stroke="#1ABCFE" stroke-width="2"/>
+  <rect x="110" y="78" width="8" height="8" fill="#FFFFFF" stroke="#1ABCFE" stroke-width="2"/>
+</svg>

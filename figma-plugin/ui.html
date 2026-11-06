@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    /* Figma injects --figma-color-* when showUI has themeColors: true. Fallbacks are for previewing in a browser. */
+    :root {
+      --bg: var(--figma-color-bg, #ffffff);
+      --bg-2: var(--figma-color-bg-secondary, #f5f5f5);
+      --text: var(--figma-color-text, #1e1e1e);
+      --text-2: var(--figma-color-text-secondary, #6b6b6b);
+      --border: var(--figma-color-border, #e6e6e6);
+      --brand: var(--figma-color-bg-brand, #0d99ff);
+      --ok: var(--figma-color-text-success, #14ae5c);
+      --ok-bg: var(--figma-color-bg-success-tertiary, #e7f8ee);
+      --warn: var(--figma-color-text-warning, #b86200);
+      --warn-bg: var(--figma-color-bg-warning-tertiary, #fff4e5);
+      --err: var(--figma-color-text-danger, #dc3412);
+      --err-bg: var(--figma-color-bg-danger-tertiary, #ffe8e3);
+      --mono: ui-monospace, 'SF Mono', Menlo, monospace;
+      /* Derived from --text, so the scrollbar follows Figma's light/dark theme. */
+      --scroll-thumb: color-mix(in srgb, var(--text) 18%, transparent);
+      --scroll-thumb-hover: color-mix(in srgb, var(--text) 35%, transparent);
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+
+    /* Minimal scrollbar: thin rounded thumb, no track. Figma desktop is Chromium. */
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+    ::-webkit-scrollbar-thumb {
+      background: var(--scroll-thumb);
+      background-clip: padding-box;   /* transparent border = inset from the edge */
+      border: 3px solid transparent;
+      border-radius: 5px;
+    }
+    ::-webkit-scrollbar-thumb:hover { background-color: var(--scroll-thumb-hover); }
+    /* Figma in Firefox has no ::-webkit-scrollbar. */
+    @supports not selector(::-webkit-scrollbar) {
+      * { scrollbar-width: thin; scrollbar-color: var(--scroll-thumb) transparent; }
+    }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      font: 11px/1.45 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    code, .mono { font-family: var(--mono); font-size: 10.5px; }
+
+    header { padding: 12px 12px 0; }
+    .pill {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px; border-radius: 6px;
+      font-weight: 600;
+    }
+    .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+    .pill .sub { margin-left: auto; font-weight: 400; opacity: 0.8; }
+    .pill.connected { background: var(--ok-bg); color: var(--ok); }
+    .pill.reconnecting { background: var(--warn-bg); color: var(--warn); }
+    .pill.disconnected { background: var(--err-bg); color: var(--err); }
+
+    nav { display: flex; gap: 2px; padding: 8px 12px 0; border-bottom: 1px solid var(--border); }
+    nav button {
+      all: unset; cursor: pointer;
+      padding: 6px 8px; margin-bottom: -1px;
+      color: var(--text-2); border-bottom: 2px solid transparent;
+    }
+    nav button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--brand); font-weight: 600; }
+    nav button:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+    .badge {
+      display: inline-block; min-width: 14px; padding: 0 4px; margin-left: 4px;
+      border-radius: 7px; background: var(--brand); color: #fff;
+      font-size: 9px; line-height: 14px; text-align: center; font-weight: 600;
+    }
+    .badge.muted { background: var(--bg-2); color: var(--text-2); }
+
+    main { flex: 1; overflow-y: auto; padding: 4px 12px 12px; }
+    [role="tabpanel"][hidden] { display: none; }
+
+    h3 {
+      margin: 12px 0 6px;
+      font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+      color: var(--text-2);
+    }
+    dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 0; }
+    dt { color: var(--text-2); }
+    dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+
+    .box { padding: 8px 10px; border-radius: 6px; background: var(--bg-2); }
+    .box.err { background: var(--err-bg); }
+    .box ol { margin: 4px 0 0; padding-left: 16px; }
+    .cmd { display: flex; gap: 6px; align-items: flex-start; }
+    .cmd code { flex: 1; overflow-wrap: anywhere; }
+    button.small {
+      all: unset; cursor: pointer; flex: none;
+      padding: 2px 8px; border: 1px solid var(--border); border-radius: 4px;
+      background: var(--bg); color: var(--text);
+    }
+    button.small:focus-visible { outline: 2px solid var(--brand); }
+    .muted { color: var(--text-2); }
+
+    .log { list-style: none; margin: 8px 0 0; padding: 0; }
+    .log li { padding: 6px 0; border-bottom: 1px solid var(--border); }
+    .log .row { display: flex; gap: 6px; align-items: baseline; }
+    .log .icon { width: 12px; flex: none; text-align: center; }
+    .log .ok .icon { color: var(--ok); }
+    .log .error .icon, .log .err-msg { color: var(--err); }
+    .log .pending .icon { color: var(--warn); }
+    .log .meta { margin-left: auto; color: var(--text-2); white-space: nowrap; }
+    .log .detail { margin-left: 18px; color: var(--text-2); overflow-wrap: anywhere; }
+
+    .tool { padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .tool .name { font-weight: 600; }
+    .tool p { margin: 2px 0 4px; color: var(--text-2); }
+    .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+    .chip { padding: 1px 6px; border-radius: 4px; background: var(--bg-2); }
+    .chip.tag { background: transparent; border: 1px solid var(--border); color: var(--text-2); }
+  </style>
+</head>
+<body>
+  <header>
+    <div id="pill" class="pill disconnected" role="status" aria-live="polite">
+      <span class="dot"></span><span id="pill-text">Disconnected</span><span id="pill-sub" class="sub"></span>
+    </div>
+  </header>
+
+  <nav role="tablist">
+    <button role="tab" id="tab-status" aria-controls="panel-status" aria-selected="true">Status</button>
+    <button role="tab" id="tab-activity" aria-controls="panel-activity" aria-selected="false">Activity<span id="activity-badge" class="badge" hidden></span></button>
+    <button role="tab" id="tab-tools" aria-controls="panel-tools" aria-selected="false">Tools<span id="tools-count" class="badge muted" hidden></span></button>
+  </nav>
+
+  <main>
+    <section role="tabpanel" id="panel-status" aria-labelledby="tab-status">
+      <div id="troubleshoot" class="box err" style="margin-top:12px">
+        <strong>Can't reach the bridge</strong>
+        <ol>
+          <li>Start it: <code>bun run bridge</code></li>
+          <li>Make sure nothing else uses port <code id="ts-port">—</code></li>
+          <li>After <code>bun run build-plugin</code>, close and reopen this plugin</li>
+        </ol>
+      </div>
+
+      <h3>Connection</h3>
+      <dl>
+        <dt>Bridge</dt><dd class="mono" id="ws-url">—</dd>
+        <dt>HTTP API</dt><dd class="mono" id="http-url">—</dd>
+        <dt>Connected</dt><dd id="connected-since">—</dd>
+        <dt>Bridge up</dt><dd id="bridge-up">—</dd>
+        <dt>Reconnects</dt><dd id="reconnects">0</dd>
+        <dt>Last request</dt><dd id="last-request">none yet</dd>
+      </dl>
+
+      <h3>Document</h3>
+      <dl>
+        <dt>File</dt><dd id="doc-file">—</dd>
+        <dt>Page</dt><dd id="doc-page">—</dd>
+        <dt>Pages</dt><dd id="doc-pages">—</dd>
+        <dt>Selection</dt><dd id="doc-selection">—</dd>
+      </dl>
+
+      <h3>Add to Claude</h3>
+      <div class="box cmd">
+        <code id="mcp-cmd" class="muted">Connect to the bridge to see the command.</code>
+        <button class="small" id="copy-btn" hidden>Copy</button>
+      </div>
+    </section>
+
+    <section role="tabpanel" id="panel-activity" aria-labelledby="tab-activity" hidden>
+      <div class="row" style="display:flex;align-items:center;margin-top:10px">
+        <span class="muted">Last 20 requests from Claude, newest first.</span>
+        <button class="small" id="clear-btn" style="margin-left:auto">Clear</button>
+      </div>
+      <ul class="log" id="log"></ul>
+      <p id="log-empty" class="muted">No requests yet. Ask Claude to call a tool.</p>
+      <p class="muted" id="log-note"></p>
+    </section>
+
+    <section role="tabpanel" id="panel-tools" aria-labelledby="tab-tools" hidden>
+      <div id="tools"></div>
+    </section>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const LOG_MAX = 20;
+
+    // ---- state ----
+    let ws = null;
+    let wsUrl = null;
+    let connectedAt = null;
+    let reconnectAt = null;
+    let reconnects = 0;
+    let lastRequestAt = null;
+    let hello = null;
+    let log = [];           // { requestId, action, summary, startedAt, ms, error }
+    let unseen = 0;
+    let activeTab = 'status';
+
+    // ---- helpers ----
+    function el(tag, props = {}, ...children) {
+      const node = Object.assign(document.createElement(tag), props);
+      node.append(...children.filter((c) => c != null));
+      return node;
+    }
+
+    function ago(ts) {
+      const s = Math.max(0, Math.round((Date.now() - ts) / 1000));
+      if (s < 60) return `${s}s ago`;
+      if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+      return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m ago`;
+    }
+
+    function clock(ts) {
+      return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function summarize(action, params = {}) {
+      if (action === 'run-code') return `code (${(params.code || '').length} chars)`;
+      const parts = Object.entries(params).map(([k, v]) =>
+        Array.isArray(v) ? `${k}: ${v.length} ids` : `${k}: ${v}`);
+      const s = parts.join(', ');
+      return s.length > 48 ? s.slice(0, 47) + '…' : s;
+    }
+
+    // Plugin iframes block navigator.clipboard; execCommand still works.
+    function copy(text) {
+      const ta = el('textarea', { value: text });
+      document.body.append(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+
+    // ---- tabs ----
+    function selectTab(name) {
+      activeTab = name;
+      for (const t of ['status', 'activity', 'tools']) {
+        $(`tab-${t}`).setAttribute('aria-selected', String(t === name));
+        $(`panel-${t}`).hidden = t !== name;
+      }
+      if (name === 'activity') { unseen = 0; renderBadge(); }
+    }
+    for (const t of ['status', 'activity', 'tools']) $(`tab-${t}`).onclick = () => selectTab(t);
+
+    // ---- rendering ----
+    function renderConnection() {
+      const open = ws && ws.readyState === WebSocket.OPEN;
+      const pill = $('pill');
+      if (open) {
+        pill.className = 'pill connected';
+        $('pill-text').textContent = 'Connected to bridge';
+        $('pill-sub').textContent = `since ${clock(connectedAt)}`;
+      } else if (reconnectAt) {
+        const s = Math.max(0, Math.ceil((reconnectAt - Date.now()) / 1000));
+        pill.className = 'pill reconnecting';
+        $('pill-text').textContent = s ? `Reconnecting in ${s}s` : 'Reconnecting…';
+        $('pill-sub').textContent = reconnects ? `attempt ${reconnects}` : '';
+      } else {
+        pill.className = 'pill disconnected';
+        $('pill-text').textContent = 'Disconnected';
+        $('pill-sub').textContent = '';
+      }
+
+      $('troubleshoot').hidden = open;
+      $('ws-url').textContent = wsUrl || '—';
+      $('ts-port').textContent = wsUrl ? new URL(wsUrl).port : '—';
+      $('http-url').textContent = hello ? `http://localhost:${hello.httpPort}` : '—';
+      $('connected-since').textContent = open ? `${clock(connectedAt)} (${ago(connectedAt)})` : 'not connected';
+      $('bridge-up').textContent = hello && open ? `started ${ago(hello.startedAt)}` : '—';
+      $('reconnects').textContent = String(reconnects);
+      $('last-request').textContent = lastRequestAt ? ago(lastRequestAt) : 'none yet';
+    }
+
+    function renderDocument(doc) {
+      $('doc-file').textContent = doc.name || 'Untitled';
+      $('doc-page').textContent = doc.currentPage ? doc.currentPage.name : '—';
+      $('doc-pages').textContent = String(doc.pages.length);
+      const sel = doc.selection || [];
+      if (!sel.length) {
+        $('doc-selection').textContent = 'nothing selected';
+      } else {
+        const names = sel.slice(0, 3).map((n) => n.name).join(', ');
+        const more = sel.length > 3 ? `, +${sel.length - 3} more` : '';
+        $('doc-selection').textContent = `${sel.length} — ${names}${more}`;
+      }
+    }
+
+    function renderHello() {
+      const cmd = `claude mcp add figma-local node ${hello.mcpPath}`;
+      $('mcp-cmd').textContent = cmd;
+      $('mcp-cmd').className = '';
+      const btn = $('copy-btn');
+      btn.hidden = false;
+      btn.onclick = () => {
+        copy(cmd);
+        btn.textContent = 'Copied';
+        setTimeout(() => (btn.textContent = 'Copy'), 1200);
+      };
+    }
+
+    function renderBadge() {
+      const b = $('activity-badge');
+      b.hidden = !unseen;
+      b.textContent = String(unseen);
+    }
+
+    function renderLog() {
+      const ul = $('log');
+      ul.replaceChildren(...log.map((e) => {
+        const state = e.ms == null ? 'pending' : e.error ? 'error' : 'ok';
+        const icon = { pending: '…', ok: '✓', error: '✕' }[state];
+        const meta = e.ms == null ? clock(e.startedAt) : `${e.ms} ms · ${clock(e.startedAt)}`;
+        return el('li', { className: state },
+          el('div', { className: 'row' },
+            el('span', { className: 'icon', ariaHidden: 'true' }, icon),
+            el('span', { className: 'mono' }, e.action),
+            el('span', { className: 'meta' }, meta)),
+          e.summary ? el('div', { className: 'detail mono' }, e.summary) : null,
+          e.error ? el('div', { className: 'detail err-msg' }, e.error) : null);
+      }));
+      $('log-empty').hidden = log.length > 0;
+    }
+
+    function renderTools(tools) {
+      $('tools-count').hidden = false;
+      $('tools-count').textContent = String(tools.length);
+      $('tools').replaceChildren(...tools.map((t) => {
+        const chips = Object.entries(t.params).map(([k, p]) => {
+          const type = p.enum ? p.enum.join('|') : p.type;
+          return el('span', { className: 'chip mono' }, `${k}${p.optional ? '?' : ''}: ${type}`);
+        });
+        if (t.endpoint) chips.push(el('span', { className: 'chip tag' }, 'answered by bridge'));
+        // Every description ends with the same "works locally" sentence; drop it here.
+        const desc = t.description.replace(/\s*Works entirely locally.*$/, '');
+        return el('div', { className: 'tool' },
+          el('div', { className: 'name mono' }, t.name),
+          el('p', {}, desc),
+          chips.length ? el('div', { className: 'chips' }, ...chips) : null);
+      }));
+
+      const bridgeOnly = tools.filter((t) => t.endpoint).map((t) => t.name);
+      $('log-note').textContent = bridgeOnly.length
+        ? `${bridgeOnly.join(' and ')} are answered by the bridge and don't show up here.`
+        : '';
+    }
+
+    $('clear-btn').onclick = () => { log = []; renderLog(); };
+    setInterval(renderConnection, 1000);
+
+    // ---- messages from plugin code (code.ts) ----
+    window.onmessage = async (event) => {
+      const msg = event.data.pluginMessage;
+      if (!msg) return;
+
+      if (msg.type === 'connect') {
+        wsUrl = msg.url;
+        connectWebSocket(msg.url);
+      }
+
+      if (msg.type === 'tools') {
+        renderTools(msg.tools);
+      }
+
+      if (msg.type === 'ws-send') {
+        if (msg.data.type === 'document-update') renderDocument(msg.data.document);
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify(msg.data));
+        }
+      }
+
+      if (msg.type === 'ws-response') {
+        const entry = log.find((e) => e.requestId === msg.requestId);
+        if (entry) {
+          entry.ms = Date.now() - entry.startedAt;
+          entry.error = msg.error || null;
+          renderLog();
+        }
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: 'response',
+            requestId: msg.requestId,
+            result: msg.result,
+            error: msg.error
+          }));
+        }
+      }
+    };
+
+    // ---- bridge connection ----
+    function connectWebSocket(url) {
+      if (ws) {
+        ws.onclose = null;
+        ws.close();
+      }
+
+      reconnectAt = null;
+      ws = new WebSocket(url);
+
+      ws.onopen = () => {
+        connectedAt = Date.now();
+        renderConnection();
+        parent.postMessage({ pluginMessage: { type: 'ws-connected' } }, '*');
+      };
+
+      ws.onclose = () => {
+        reconnectAt = Date.now() + 3000;
+        renderConnection();
+        setTimeout(() => {
+          reconnects++;
+          connectWebSocket(url);
+        }, 3000);
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'hello') {
+          hello = data;
+          renderHello();
+          renderConnection();
+        }
+
+        if (data.type === 'request') {
+          lastRequestAt = Date.now();
+          log.unshift({
+            requestId: data.requestId,
+            action: data.action,
+            summary: summarize(data.action, data.params),
+            startedAt: lastRequestAt,
+            ms: null,
+            error: null,
+          });
+          log.length = Math.min(log.length, LOG_MAX);
+          if (activeTab !== 'activity') { unseen++; renderBadge(); }
+          renderLog();
+          renderConnection();
+
+          parent.postMessage({
+            pluginMessage: {
+              type: 'ws-request',
+              data: {
+                requestId: data.requestId,
+                action: data.action,
+                params: data.params
+              }
+            }
+          }, '*');
+        }
+      };
+    }
+
+    renderConnection();
+  </script>
+</body>
+</html>
