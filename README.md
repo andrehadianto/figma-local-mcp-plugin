@@ -2,7 +2,7 @@
 
 ![Claude and Codex connected to Figma by a bridge](docs/cover.png)
 
-**Figma MCP for the free plan: no Dev Mode, no paid seat, no rate limits.**
+**Unofficial Figma MCP for the free plan: no Dev Mode, no paid seat, no rate limits.**
 
 ## Why
 
@@ -151,3 +151,5 @@ Based on [Figma-Local-MCP-Server](https://github.com/suulola/Figma-Local-MCP-Ser
 ## License
 
 [ISC](LICENSE)
+
+Not affiliated with or endorsed by Figma.

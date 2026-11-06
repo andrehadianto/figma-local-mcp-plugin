@@ -11,7 +11,7 @@
   "keywords": ["mcp", "figma", "plugin"],
   "author": "Andre Hadianto Lesmana",
   "license": "ISC",
-  "description": "Figma MCP for the free plan: no Dev Mode, no paid seat, no rate limits.",
+  "description": "Unofficial Figma MCP for the free plan: no Dev Mode, no paid seat, no rate limits.",
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.16",
     "ws": "^8.18.0",
